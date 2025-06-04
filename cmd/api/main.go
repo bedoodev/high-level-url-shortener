@@ -37,6 +37,8 @@ func main() {
 		zap.L().Fatal("failed to connect to Redis", zap.Error(err))
 	}
 
+	defer close(config.StopCleanupChan)
+
 	repo := repository.NewURLRepository()
 	svc := service.NewURLService(repo)
 	h := api.NewHandler(svc)

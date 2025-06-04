@@ -3,6 +3,8 @@ package cache
 import (
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // cacheItem represents a value and its expiration time.
@@ -45,5 +47,37 @@ func (c *HotKeyCache) Set(key string, value string) {
 	c.data.Store(key, cacheItem{
 		value:      value,
 		expiration: time.Now().Add(c.ttl),
+	})
+}
+
+// Running a goroutine to periodically clean up expired items.
+func (c *HotKeyCache) StartCleanup(interval time.Duration, stop <-chan struct{}) {
+
+	ticker := time.NewTicker(interval)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				c.cleanup()
+			case <-stop:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+// Cleanup: Remove expired items.
+func (c *HotKeyCache) cleanup() {
+	zap.L().Info("HotKeyCache cleanup started...")
+
+	now := time.Now()
+
+	c.data.Range(func(key, value interface{}) bool {
+		item := value.(cacheItem)
+		if now.After(item.expiration) {
+			c.data.Delete(key)
+		}
+		return true
 	})
 }
