@@ -5,9 +5,12 @@ import (
 	"errors"
 	"math/rand"
 	"strings"
+	"time"
 
+	"github.com/bedoodev/high-level-url-shortener/internal/config"
 	"github.com/bedoodev/high-level-url-shortener/internal/model"
 	"github.com/bedoodev/high-level-url-shortener/internal/repository"
+	"go.uber.org/zap"
 )
 
 type URLService interface {
@@ -58,12 +61,32 @@ func (s *urlService) ShortenURL(ctx context.Context, originalURL string) (*model
 }
 
 func (s *urlService) ResolveURL(ctx context.Context, shortCode string) (*model.URL, error) {
+	// Check redis first
+	// if exists, return url
+	// if not, check db
+	original, err := config.RedisClient.Get(ctx, shortCode).Result()
+
+	if err == nil {
+		zap.L().Info("Request from redis")
+		_ = s.repo.IncrementClickCount(ctx, shortCode)
+		return &model.URL{
+			OriginalURL: original,
+			ShortCode:   shortCode,
+		}, nil
+
+	}
+
+	// Check db
 	url, err := s.repo.FindByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, err
 	}
 
-	// Tıklama sayısını artır (async yapabiliriz sonra)
+	zap.L().Info("Request from db")
+	// Write to redis
+	_ = config.RedisClient.Set(ctx, shortCode, url.OriginalURL, 24*time.Hour).Err() // 0 => no expiration time, write t
+
+	// Update click count
 	_ = s.repo.IncrementClickCount(ctx, shortCode)
 
 	return url, nil
