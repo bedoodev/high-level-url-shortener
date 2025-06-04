@@ -31,6 +31,8 @@ func main() {
 		zap.L().Fatal("failed to migrate", zap.Error(err))
 	}
 
+	config.InitCache()
+
 	if err := config.InitRedis(); err != nil {
 		zap.L().Fatal("failed to connect to Redis", zap.Error(err))
 	}

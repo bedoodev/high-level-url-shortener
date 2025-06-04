@@ -61,14 +61,27 @@ func (s *urlService) ShortenURL(ctx context.Context, originalURL string) (*model
 }
 
 func (s *urlService) ResolveURL(ctx context.Context, shortCode string) (*model.URL, error) {
-	// Check redis first
-	// if exists, return url
-	// if not, check db
+	// 1. Check Local cache (RAM)
+	if original, ok := config.HotKeyCache.Get(shortCode); ok {
+
+		zap.L().Info("Response from RAM")
+		_ = s.repo.IncrementClickCount(ctx, shortCode)
+		return &model.URL{
+			OriginalURL: original,
+			ShortCode:   shortCode,
+		}, nil
+	}
+
+	// 2. Check redis
 	original, err := config.RedisClient.Get(ctx, shortCode).Result()
 
 	if err == nil {
-		zap.L().Info("Request from redis")
+		zap.L().Info("Response from redis")
 		_ = s.repo.IncrementClickCount(ctx, shortCode)
+
+		// Write to local cache
+		config.HotKeyCache.Set(shortCode, original)
+
 		return &model.URL{
 			OriginalURL: original,
 			ShortCode:   shortCode,
@@ -76,15 +89,18 @@ func (s *urlService) ResolveURL(ctx context.Context, shortCode string) (*model.U
 
 	}
 
-	// Check db
+	// 3. Check Postgres
 	url, err := s.repo.FindByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, err
 	}
 
-	zap.L().Info("Request from db")
+	zap.L().Info("Response from db")
 	// Write to redis
 	_ = config.RedisClient.Set(ctx, shortCode, url.OriginalURL, 24*time.Hour).Err() // 0 => no expiration time, write t
+
+	// Write to local cache
+	config.HotKeyCache.Set(shortCode, url.OriginalURL)
 
 	// Update click count
 	_ = s.repo.IncrementClickCount(ctx, shortCode)
