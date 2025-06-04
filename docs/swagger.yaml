@@ -1,0 +1,69 @@
+basePath: /
+definitions:
+  api.shortenRequest:
+    properties:
+      url:
+        type: string
+    type: object
+  api.shortenResponse:
+    properties:
+      short_url:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is a simple high-level URL shortener written in Go.
+  title: URL Shortener API
+  version: "1.0"
+paths:
+  /{code}:
+    get:
+      description: Redirects from a short URL code to the original URL
+      parameters:
+      - description: Short code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "302":
+          description: Redirect
+          schema:
+            type: string
+        "404":
+          description: Not found
+          schema:
+            type: string
+      summary: Redirect to original URL
+  /shorten:
+    post:
+      consumes:
+      - application/json
+      description: Takes a long URL and returns a shortened version
+      parameters:
+      - description: URL to shorten
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.shortenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.shortenResponse'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Shorten a URL
+swagger: "2.0"

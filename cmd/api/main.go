@@ -1,10 +1,19 @@
+// @title       URL Shortener API
+// @version     1.0
+// @description This is a simple high-level URL shortener written in Go.
+// @host        localhost:8080
+// @BasePath    /
+
 package main
 
 import (
 	"net/http"
 
+	"github.com/bedoodev/high-level-url-shortener/internal/api"
 	"github.com/bedoodev/high-level-url-shortener/internal/config"
 	"github.com/bedoodev/high-level-url-shortener/internal/model"
+	"github.com/bedoodev/high-level-url-shortener/internal/repository"
+	"github.com/bedoodev/high-level-url-shortener/internal/service"
 	"go.uber.org/zap"
 )
 
@@ -22,13 +31,13 @@ func main() {
 		zap.L().Fatal("failed to migrate", zap.Error(err))
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, world!"))
-		zap.L().Info("request received", zap.String("method", r.Method), zap.String("path", r.URL.Path))
-	})
+	repo := repository.NewURLRepository()
+	svc := service.NewURLService(repo)
+	h := api.NewHandler(svc)
+	r := api.NewRouter(h)
 
-	zap.L().Info("Server is starting", zap.String("port", ":8080"))
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		zap.L().Fatal("server failed", zap.Error(err))
+	zap.L().Info("Server is running on :8080")
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		zap.L().Fatal("server crashed", zap.Error(err))
 	}
 }
