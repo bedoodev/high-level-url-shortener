@@ -81,5 +81,5 @@ func (h *Handler) Resolve(w http.ResponseWriter, r *http.Request) {
 // @Failure     500 {string} string "Internal Server Error"
 func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("pong"))
+	w.Write([]byte("pong\n"))
 }
