@@ -13,7 +13,7 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: This is a simple high-level URL shortener written in Go.
+  description: This is a high-level URL shortener written in Go.
   title: URL Shortener API
   version: "1.0"
 paths:
@@ -38,6 +38,58 @@ paths:
           schema:
             type: string
       summary: Redirect to original URL
+      tags:
+      - main
+  /analytics/{shortCode}:
+    get:
+      description: Returns daily click counts for a short URL
+      parameters:
+      - description: Short Code
+        in: path
+        name: shortCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get daily click counts
+      tags:
+      - main
+  /analytics/top:
+    get:
+      description: Returns top short codes with highest click counts
+      parameters:
+      - default: 10
+        description: Number of top results to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get top most clicked URLs
+      tags:
+      - main
   /shorten:
     post:
       consumes:
@@ -66,4 +118,6 @@ paths:
           schema:
             type: string
       summary: Shorten a URL
+      tags:
+      - main
 swagger: "2.0"

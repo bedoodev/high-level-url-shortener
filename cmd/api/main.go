@@ -42,7 +42,7 @@ func main() {
 	if err := config.InitPostgres(); err != nil {
 		zap.L().Fatal("cannot initialize DB", zap.Error(err))
 	}
-	if err := config.DB.AutoMigrate(&model.URL{}); err != nil {
+	if err := config.DB.AutoMigrate(&model.URL{}, &model.ClickEvent{}); err != nil {
 		zap.L().Fatal("failed to migrate", zap.Error(err))
 	}
 

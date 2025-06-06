@@ -19,6 +19,8 @@ func NewRouter(handler *Handler) http.Handler {
 
 	r.Post("/shorten", handler.Shorten)
 	r.Get("/{code}", handler.Resolve)
+	r.Get("/analytics/{shortCode}", handler.GetAnalytics)
+	r.Get("/analytics/top", handler.GetTopAnalytics)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	return r

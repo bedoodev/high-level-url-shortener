@@ -17,6 +17,8 @@ import (
 type URLService interface {
 	ShortenURL(ctx context.Context, originalURL string) (*model.URL, error)
 	ResolveURL(ctx context.Context, shortCode string) (*model.URL, error)
+	GetAnalytics(ctx context.Context, shortCode string) (map[string]int, error)
+	GetTopURLs(ctx context.Context, limit int) ([]map[string]interface{}, error)
 }
 
 type urlService struct {
@@ -117,4 +119,16 @@ func generateShortCode(length int) string {
 		code[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(code)
+}
+
+func (s *urlService) GetAnalytics(ctx context.Context, shortCode string) (map[string]int, error) {
+	url, err := s.repo.FindByShortCode(ctx, shortCode)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetDailyClickCounts(ctx, url.ID)
+}
+
+func (s *urlService) GetTopURLs(ctx context.Context, limit int) ([]map[string]interface{}, error) {
+	return s.repo.GetTopClickedURLs(ctx, limit)
 }
