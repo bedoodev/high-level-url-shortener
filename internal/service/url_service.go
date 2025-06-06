@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bedoodev/high-level-url-shortener/internal/config"
+	"github.com/bedoodev/high-level-url-shortener/internal/kafka"
 	"github.com/bedoodev/high-level-url-shortener/internal/model"
 	"github.com/bedoodev/high-level-url-shortener/internal/repository"
 	"go.uber.org/zap"
@@ -65,7 +66,7 @@ func (s *urlService) ResolveURL(ctx context.Context, shortCode string) (*model.U
 	if original, ok := config.HotKeyCache.Get(shortCode); ok {
 
 		zap.L().Info("Response from RAM")
-		_ = s.repo.IncrementClickCount(ctx, shortCode)
+		_ = kafka.PublishClick(ctx, shortCode)
 		return &model.URL{
 			OriginalURL: original,
 			ShortCode:   shortCode,
@@ -77,7 +78,7 @@ func (s *urlService) ResolveURL(ctx context.Context, shortCode string) (*model.U
 
 	if err == nil {
 		zap.L().Info("Response from redis")
-		_ = s.repo.IncrementClickCount(ctx, shortCode)
+		_ = kafka.PublishClick(ctx, shortCode)
 
 		// Write to local cache
 		config.HotKeyCache.Set(shortCode, original)
@@ -103,7 +104,7 @@ func (s *urlService) ResolveURL(ctx context.Context, shortCode string) (*model.U
 	config.HotKeyCache.Set(shortCode, url.OriginalURL)
 
 	// Update click count
-	_ = s.repo.IncrementClickCount(ctx, shortCode)
+	_ = kafka.PublishClick(ctx, shortCode)
 
 	return url, nil
 }

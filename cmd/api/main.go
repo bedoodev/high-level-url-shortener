@@ -7,10 +7,12 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/bedoodev/high-level-url-shortener/internal/api"
 	"github.com/bedoodev/high-level-url-shortener/internal/config"
+	"github.com/bedoodev/high-level-url-shortener/internal/kafka"
 	"github.com/bedoodev/high-level-url-shortener/internal/model"
 	"github.com/bedoodev/high-level-url-shortener/internal/repository"
 	"github.com/bedoodev/high-level-url-shortener/internal/service"
@@ -40,9 +42,13 @@ func main() {
 	defer close(config.StopCleanupChan)
 
 	repo := repository.NewURLRepository()
+	ctx := context.Background()
 	svc := service.NewURLService(repo)
 	h := api.NewHandler(svc)
 	r := api.NewRouter(h)
+
+	kafka.InitKafkaProducer("kafka:9092")
+	go kafka.StartClickConsumer(ctx, repo, "kafka:9092")
 
 	zap.L().Info("Server is running on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
