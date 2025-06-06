@@ -34,7 +34,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Graceful shutdown için sinyal yakalayıcı
+	// Signal handler for graceful shutdown
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -59,10 +59,10 @@ func main() {
 
 	repo := repository.NewURLRepository()
 
-	// Kafka consumer'ı arka planda çalıştır
+	// tart Kafka consumer in background
 	go kafka.StartClickConsumer(ctx, repo, brokerAddr)
 
-	// API servis
+	// API service
 	svc := service.NewURLService(repo)
 	h := api.NewHandler(svc)
 	r := api.NewRouter(h)
@@ -72,7 +72,7 @@ func main() {
 		Handler: r,
 	}
 
-	// HTTP server'ı arka planda başlat
+	// // Start HTTP server in background
 	go func() {
 		zap.L().Info("Server is running on :8080")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -80,11 +80,11 @@ func main() {
 		}
 	}()
 
-	// Sinyal gelene kadar bekle
+	// Wait for shutdown signal
 	<-signalChan
 	zap.L().Info("Shutdown signal received")
 
-	// Graceful shutdown başlat
+	// Start Graceful Shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
@@ -94,5 +94,5 @@ func main() {
 		zap.L().Info("HTTP server shutdown complete")
 	}
 
-	cancel() // Kafka gibi işlemleri iptal et
+	cancel() // Cancel operations like Kafka
 }
