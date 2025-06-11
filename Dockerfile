@@ -1,18 +1,28 @@
-FROM golang:1.24
-
-RUN apk add --no-cache curl git
+# Stage 1: Build binary
+FROM golang:1.24 AS builder
 
 WORKDIR /app
 
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go install github.com/air-verse/air@latest
 
-# Healthcheck (Kubernetes & Docker support)
+# Giriş noktası olarak main.go build ediliyor
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/api
+
+# Stage 2: Minimal runtime image
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/main .
+COPY .env .
+
+# Sağlık kontrolü (opsiyonel ama önerilir)
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8080/healthz || exit 1
+  CMD wget --spider -q http://localhost:8080/healthz || exit 1
 
-# Use Air for dev (change for production later)
-CMD ["air"]
+EXPOSE 8080
+
+CMD ["./main"]
