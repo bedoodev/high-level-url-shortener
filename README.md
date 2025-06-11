@@ -133,10 +133,6 @@ The application follows a clean architecture pattern with the following componen
 
 The application includes built-in rate limiting to protect against DDoS attacks. The rate limiter is implemented in-memory and does not require any external dependencies.
 
-## 🔍 Monitoring
-
-The application includes a health check endpoint at /ping that can be used for monitoring and health checks.
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
