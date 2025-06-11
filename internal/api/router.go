@@ -23,5 +23,10 @@ func NewRouter(handler *Handler) http.Handler {
 	r.Get("/analytics/top", handler.GetTopAnalytics)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
+
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 	return r
 }

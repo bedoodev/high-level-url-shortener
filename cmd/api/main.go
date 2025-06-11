@@ -9,7 +9,6 @@ package main
 import (
 	"context"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -24,21 +23,17 @@ import (
 )
 
 func main() {
-	// Logger
+	// Initialize logger
 	if err := config.InitLogger(); err != nil {
 		panic("cannot initialize zap logger: " + err.Error())
 	}
 	defer config.Logger.Sync()
 
-	// Signal & Context Setup
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// Setup context with cancel for graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// Signal handler for graceful shutdown
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Database
+	// Initialize PostgreSQL and run migrations
 	if err := config.InitPostgres(); err != nil {
 		zap.L().Fatal("cannot initialize DB", zap.Error(err))
 	}
@@ -46,33 +41,34 @@ func main() {
 		zap.L().Fatal("failed to migrate", zap.Error(err))
 	}
 
-	// Caches
+	// Initialize local cache and Redis
 	config.InitCache()
 	if err := config.InitRedis(); err != nil {
 		zap.L().Fatal("failed to connect to Redis", zap.Error(err))
 	}
 	defer close(config.StopCleanupChan)
 
-	// Kafka
+	// Initialize Kafka
 	brokerAddr := "kafka:9092"
 	kafka.InitKafkaProducer(brokerAddr)
 
 	repo := repository.NewURLRepository()
 
-	// tart Kafka consumer in background
+	// Start Kafka consumer in the background
 	go kafka.StartClickConsumer(ctx, repo, brokerAddr)
 
-	// API service
+	// Initialize HTTP handler and router
 	svc := service.NewURLService(repo)
 	h := api.NewHandler(svc)
 	r := api.NewRouter(h)
 
+	// Setup HTTP server
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: r,
 	}
 
-	// // Start HTTP server in background
+	// Run HTTP server in goroutine
 	go func() {
 		zap.L().Info("Server is running on :8080")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -80,19 +76,17 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
-	<-signalChan
+	// Wait for SIGINT or SIGTERM
+	<-ctx.Done()
 	zap.L().Info("Shutdown signal received")
 
-	// Start Graceful Shutdown
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
+	// Graceful shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("failed to shutdown HTTP server", zap.Error(err))
 	} else {
 		zap.L().Info("HTTP server shutdown complete")
 	}
-
-	cancel() // Cancel operations like Kafka
 }
