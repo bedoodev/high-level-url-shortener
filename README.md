@@ -18,6 +18,7 @@ This project is a **high-level, production-ready URL shortener** built in **pure
 | Language        | Go (1.21+)                   |
 | Database        | PostgreSQL (via GORM)        |
 | Cache Layer     | Redis + sync.Map (hot cache) |
+| Message Queue   | Kafka                        |
 | API Framework   | Chi                          |
 | Logging         | Uber Zap                     |
 | Swagger Docs    | Swaggo + OpenAPI             |
@@ -87,6 +88,7 @@ You should receive a successful response(pong).
 - API Documentation : Open [swagger](http://localhost:8080/swagger/index.html) in your browser to view and test the API using Swagger UI.
 
 #### Shortening a URL
+
 ```bash
 curl -X POST http://localhost:8080/shorten \
   -H "Content-Type: application/json" \
@@ -94,9 +96,11 @@ curl -X POST http://localhost:8080/shorten \
 ```
 
 #### Accessing a shortened URL :
-  Open `http://localhost:8080/{code}` in your browser, where {code} is the short code returned from the shorten endpoint.
+
+Open `http://localhost:8080/{code}` in your browser, where {code} is the short code returned from the shorten endpoint.
 
 #### Get analytic for a shortened URL
+
 ```bash
 curl -X 'GET' \
   'http://localhost:8080/analytics/{code}' \
@@ -104,6 +108,7 @@ curl -X 'GET' \
 ```
 
 #### Get top shortened URL
+
 ```bash
 curl -X 'GET' \
   'http://localhost:8080/analytics/top?limit={n}' \
